@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Event Manager</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <h1>🎓 Campus Event Manager</h1>
+    <p>Discover, Create, and Register for Campus Events</p>
+  </header>
+
+  <main class="container">
+    <!-- Form to Create/Edit Event -->
+    <section class="card">
+      <h2 id="form-title">Create New Event</h2>
+      <form id="event-form">
+        <input type="hidden" id="event-id">
+        
+        <div class="form-group">
+          <label for="title">Event Title*</label>
+          <input type="text" id="title" required placeholder="e.g., Intro to Web Development">
+        </div>
+
+        <div class="form-group">
+          <label for="venue">Venue*</label>
+          <input type="text" id="venue" required placeholder="e.g., Lecture Hall B">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="event_date">Date*</label>
+            <input type="date" id="event_date" required>
+          </div>
+          <div class="form-group">
+            <label for="event_time">Time*</label>
+            <input type="text" id="event_time" required placeholder="e.g., 4:00 PM">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="organiser_name">Organiser Name*</label>
+          <input type="text" id="organiser_name" required placeholder="e.g., Computer Science Club">
+        </div>
+
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea id="description" rows="3" placeholder="Brief details about the event..."></textarea>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn primary">Save Event</button>
+        <button type="button" id="cancel-btn" class="btn secondary" style="display:none;">Cancel Edit</button>
+      </form>
+    </section>
+
+    <!-- Feedback Banner -->
+    <div id="status-message" class="message hidden"></div>
+
+    <!-- Events List -->
+    <section>
+      <h2>Upcoming Events</h2>
+      <div id="events-list" class="events-grid">
+        <p>Loading events...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
