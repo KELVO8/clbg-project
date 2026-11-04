@@ -1,6 +1,6 @@
 // 1. Initialize Supabase Client
-const SUPABASE_URL = 'https://dwqifavfgggrdzimvrfx.supabase.co'; // Ensure your verified URL is here
-const SUPABASE_KEY = 'sb_publishable_8BoKa-IB_kQPtt2rhi2X4w_or0ImSFV'; // Replace with your actual anon public key
+const SUPABASE_URL = 'https://dwqifavfgggrdzimvrfx.supabase.co'; 
+const SUPABASE_KEY = 'sb_publishable_8BoKa-IB_kQPtt2rhi2X4w_or0ImSFV';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // DOM Elements
@@ -12,12 +12,32 @@ const dateInput = document.getElementById('event_date');
 const timeInput = document.getElementById('event_time');
 const organiserInput = document.getElementById('organiser_name');
 const descriptionInput = document.getElementById('description');
-const eventsList = document.getElementById('events-list');
+const registerEventsList = document.getElementById('register-events-list');
 const formTitle = document.getElementById('form-title');
 const cancelBtn = document.getElementById('cancel-btn');
 const statusMessage = document.getElementById('status-message');
 
-// Helper: Display Status Messages
+// Set minimum date selector to Today
+if (dateInput) {
+  dateInput.min = new Date().toISOString().split('T')[0];
+}
+
+// 2. PAGE SWITCHER FUNCTION
+window.switchPage = (pageName) => {
+  // Hide all views
+  document.querySelectorAll('.page-view').forEach(view => view.classList.add('hidden'));
+  // Remove active class from nav buttons
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+
+  // Show target page & activate button
+  document.getElementById(`page-${pageName}`).classList.remove('hidden');
+  document.getElementById(`nav-${pageName}`).classList.add('active');
+
+  // Refresh data whenever page is switched
+  fetchEvents();
+};
+
+// Helper: Display Messages
 function showMessage(msg, isError = false) {
   statusMessage.textContent = msg;
   statusMessage.className = `message ${isError ? 'error' : 'success'}`;
@@ -25,62 +45,93 @@ function showMessage(msg, isError = false) {
   setTimeout(() => statusMessage.classList.add('hidden'), 4000);
 }
 
-// 2. READ: Fetch and display all events
+// 3. READ: Fetch Events & Update Home Stats + Register Page
 async function fetchEvents() {
-  const { data, error } = await supabaseClient
+  const { data: events, error: eventError } = await supabaseClient
     .from('events')
     .select('*')
     .order('event_date', { ascending: true });
 
-  if (error) {
-    showMessage('Error fetching events: ' + error.message, true);
+  if (eventError) {
+    showMessage('Error fetching events: ' + eventError.message, true);
     return;
   }
 
-  if (!data || data.length === 0) {
-    eventsList.innerHTML = '<p>No upcoming events found. Create one above!</p>';
+  const { data: registrations } = await supabaseClient
+    .from('registrations')
+    .select('event_id, attendee_name');
+
+  // Update Home Page Summary Stats
+  document.getElementById('stat-total-events').textContent = events ? events.length : 0;
+  document.getElementById('stat-total-regs').textContent = registrations ? registrations.length : 0;
+
+  // Handle empty event list state on Register Page
+  if (!events || events.length === 0) {
+    registerEventsList.innerHTML = '<div class="card"><p>No events available right now. Click "Create Event" in the sidebar to add one!</p></div>';
     return;
   }
 
-  eventsList.innerHTML = data.map(event => `
-    <div class="event-card">
-      <h3>${event.title}</h3>
-      <p>📍 <strong>Venue:</strong> ${event.venue}</p>
-      <p>📅 <strong>Date:</strong> ${event.event_date} at ${event.event_time}</p>
-      <p>👤 <strong>Organiser:</strong> ${event.organiser_name}</p>
-      <p>${event.description || ''}</p>
-      
-      <div class="event-actions">
-        <button onclick="toggleRegisterForm(${event.id})" class="btn primary">Register</button>
-        <button onclick="editEvent(${event.id}, '${event.title.replace(/'/g, "\\'")}', '${event.venue.replace(/'/g, "\\'")}', '${event.event_date}', '${event.event_time}', '${event.organiser_name.replace(/'/g, "\\'")}', '${(event.description || '').replace(/'/g, "\\'")}')" class="btn warning">Edit</button>
-        <button onclick="deleteEvent(${event.id})" class="btn danger">Delete</button>
-      </div>
+  const regMap = {};
+  if (registrations) {
+    registrations.forEach(r => {
+      if (!regMap[r.event_id]) regMap[r.event_id] = [];
+      regMap[r.event_id].push(r.attendee_name);
+    });
+  }
 
-      <!-- Registration Form Container (Hidden by default) -->
-      <div id="register-box-${event.id}" class="registration-box hidden">
-        <h4>Register for this Event</h4>
-        <form onsubmit="submitRegistration(event, ${event.id})">
-          <div class="form-group">
-            <label>Are you a student?</label>
-            <select id="reg-status-${event.id}" required>
-              <option value="Yes">Yes, I am a student</option>
-              <option value="No">No, Guest/Staff</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <input type="text" id="reg-name-${event.id}" placeholder="Your Full Name" required>
-          </div>
-          <div class="form-group">
-            <input type="email" id="reg-email-${event.id}" placeholder="Your Student/User Email" required>
-          </div>
-          <button type="submit" class="btn success">Confirm Registration</button>
-        </form>
+  // Render events on the Register Page
+  registerEventsList.innerHTML = events.map(event => {
+    const attendeeList = regMap[event.id] || [];
+    const count = attendeeList.length;
+
+    return `
+      <div class="event-card">
+        <h3>${event.title}</h3>
+        <p>📍 <strong>Venue:</strong> ${event.venue}</p>
+        <p>📅 <strong>Date:</strong> ${event.event_date} at ${event.event_time}</p>
+        <p>👤 <strong>Organiser:</strong> ${event.organiser_name}</p>
+        <p>🎟️ <strong>Registered Attendees:</strong> ${count}</p>
+        <p><em>${event.description || ''}</em></p>
+        
+        <div class="event-actions">
+          <button onclick="toggleRegisterForm(${event.id})" class="btn primary">Register</button>
+          <button onclick="toggleAttendeesList(${event.id})" class="btn secondary">View List (${count})</button>
+          <button onclick="editEvent(${event.id}, '${event.title.replace(/'/g, "\\'")}', '${event.venue.replace(/'/g, "\\'")}', '${event.event_date}', '${event.event_time}', '${event.organiser_name.replace(/'/g, "\\'")}', '${(event.description || '').replace(/'/g, "\\'")}')" class="btn warning">Edit</button>
+          <button onclick="deleteEvent(${event.id})" class="btn danger">Delete</button>
+        </div>
+
+        <!-- Registration Form Container -->
+        <div id="register-box-${event.id}" class="registration-box hidden">
+          <h4>Register for this Event</h4>
+          <form onsubmit="submitRegistration(event, ${event.id})">
+            <div class="form-group">
+              <label>Are you a student?</label>
+              <select id="reg-status-${event.id}" required>
+                <option value="Yes">Yes, I am a student</option>
+                <option value="No">No, Guest/Staff</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <input type="text" id="reg-name-${event.id}" placeholder="Your Full Name" required>
+            </div>
+            <div class="form-group">
+              <input type="email" id="reg-email-${event.id}" placeholder="Your Email Address" required>
+            </div>
+            <button type="submit" class="btn success">Confirm Registration</button>
+          </form>
+        </div>
+
+        <!-- Attendees List Container -->
+        <div id="attendees-box-${event.id}" class="registration-box hidden">
+          <h4>Registered Attendees (${count})</h4>
+          ${count === 0 ? '<p>No registrations yet.</p>' : `<ul style="padding-left: 1.2rem; font-size: 0.9rem;">${attendeeList.map(name => `<li>${name}</li>`).join('')}</ul>`}
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
-// 3. CREATE / UPDATE Event (Organiser Action)
+// 4. CREATE / UPDATE Event
 eventForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
@@ -96,33 +147,40 @@ eventForm.addEventListener('submit', async (e) => {
 
   if (id) {
     const { error } = await supabaseClient.from('events').update(eventData).eq('id', id);
-    if (error) showMessage(error.message, true);
+    if (error) showMessage('Update failed: ' + error.message, true);
     else showMessage('Event updated successfully!');
   } else {
     const { error } = await supabaseClient.from('events').insert([eventData]);
-    if (error) showMessage(error.message, true);
+    if (error) showMessage('Creation failed: ' + error.message, true);
     else showMessage('Event created successfully!');
   }
 
   resetForm();
-  fetchEvents();
+  switchPage('register'); // Switch user straight to the Register Page to see their new event!
 });
 
-// 4. Toggle Registration Form Display
+// 5. Registration Toggle & Submission
 window.toggleRegisterForm = (eventId) => {
   const box = document.getElementById(`register-box-${eventId}`);
+  const list = document.getElementById(`attendees-box-${eventId}`);
+  if (list) list.classList.add('hidden');
   box.classList.toggle('hidden');
 };
 
-// 5. SUBMIT Registration to Supabase
+window.toggleAttendeesList = (eventId) => {
+  const list = document.getElementById(`attendees-box-${eventId}`);
+  const box = document.getElementById(`register-box-${eventId}`);
+  if (box) box.classList.add('hidden');
+  list.classList.toggle('hidden');
+};
+
 window.submitRegistration = async (e, eventId) => {
   e.preventDefault();
 
   const isStudent = document.getElementById(`reg-status-${eventId}`).value;
   const attendeeName = document.getElementById(`reg-name-${eventId}`).value.trim();
-  const attendeeEmail = document.getElementById(`reg-email-${eventId}`).value.trim();
+  const attendeeEmail = document.getElementById(`reg-email-${eventId}`).value.trim().toLowerCase();
 
-  // Combine student status into name or record if needed
   const displayName = isStudent === 'Yes' ? `${attendeeName} (Student)` : attendeeName;
 
   const { error } = await supabaseClient
@@ -136,12 +194,13 @@ window.submitRegistration = async (e, eventId) => {
   if (error) {
     showMessage('Registration failed: ' + error.message, true);
   } else {
-    showMessage('🎉 Registration successful! See you at the event.');
+    showMessage('🎉 Registration confirmed!');
     document.getElementById(`register-box-${eventId}`).classList.add('hidden');
+    fetchEvents();
   }
 };
 
-// Populate Form for EDIT
+// EDIT & DELETE Functions
 window.editEvent = (id, title, venue, date, time, organiser, description) => {
   eventIdInput.value = id;
   titleInput.value = title;
@@ -153,7 +212,7 @@ window.editEvent = (id, title, venue, date, time, organiser, description) => {
 
   formTitle.textContent = 'Edit Event';
   cancelBtn.style.display = 'inline-block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  switchPage('create'); // Switch to Create Form view for editing
 };
 
 cancelBtn.addEventListener('click', resetForm);
@@ -165,12 +224,11 @@ function resetForm() {
   cancelBtn.style.display = 'none';
 }
 
-// DELETE Event
 window.deleteEvent = async (id) => {
-  if (!confirm('Are you sure you want to delete this event?')) return;
+  if (!confirm('Are you sure you want to delete this event? Linked registrations will be cleared.')) return;
 
   const { error } = await supabaseClient.from('events').delete().eq('id', id);
-  if (error) showMessage(error.message, true);
+  if (error) showMessage('Delete failed: ' + error.message, true);
   else showMessage('Event deleted successfully!');
 
   fetchEvents();
