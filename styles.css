@@ -10,24 +10,60 @@ body {
   color: #333;
 }
 
-/* Sidebar Layout Container */
 .app-layout {
   display: flex;
   min-height: 100vh;
+  position: relative;
 }
 
-/* Side Navigation Bar */
+/* Sidebar Styles */
 .sidebar {
   width: 250px;
   background-color: #1e293b;
   color: white;
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem;
   flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
-.sidebar-brand {
+.sidebar.collapsed {
+  margin-left: -250px;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 2rem;
-  padding-left: 0.5rem;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.icon-btn:hover {
+  background: #334155;
+  color: white;
+}
+
+.floating-toggle {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  background: #1e293b;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .nav-links {
@@ -49,6 +85,9 @@ body {
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 }
 
 .nav-btn:hover {
@@ -71,10 +110,6 @@ body {
 
 .page-header {
   margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  color: #0f172a;
 }
 
 .card, .hero-card {
@@ -147,7 +182,7 @@ input, textarea, select {
 .events-grid {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 }
 
 .event-card {
@@ -162,12 +197,18 @@ input, textarea, select {
 .event-card p { font-size: 0.9rem; color: #555; margin-bottom: 0.3rem; }
 .event-actions { margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
-.registration-box {
+.registration-box, .manage-box {
   margin-top: 1rem;
   padding: 1rem;
   background-color: #f1f5f9;
   border-radius: 6px;
   border: 1px solid #cbd5e1;
+}
+
+.manage-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
 }
 
 .message {

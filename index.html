@@ -11,31 +11,35 @@
 <body>
   <div class="app-layout">
     <!-- Side Navigation Bar -->
-    <nav class="sidebar">
-      <div class="sidebar-brand">
-        <h2>🎓 EventHub</h2>
+    <nav id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <h2 class="brand-title">🎓 EventHub</h2>
+        <button id="toggle-sidebar-btn" onclick="toggleSidebar()" class="icon-btn" title="Hide Navigation">◀</button>
       </div>
       <ul class="nav-links">
         <li>
           <button id="nav-home" class="nav-btn active" onclick="switchPage('home')">
-            🏠 Home
+            <span class="nav-icon">🏠</span> <span class="nav-text">Home</span>
           </button>
         </li>
         <li>
           <button id="nav-register" class="nav-btn" onclick="switchPage('register')">
-            🎟️ Register for Event
+            <span class="nav-icon">🎟️</span> <span class="nav-text">Register for Event</span>
           </button>
         </li>
         <li>
           <button id="nav-create" class="nav-btn" onclick="switchPage('create')">
-            ➕ Create Event
+            <span class="nav-icon">➕</span> <span class="nav-text">Create Event</span>
           </button>
         </li>
       </ul>
     </nav>
 
-    <!-- Main Content Views -->
+    <!-- Main Content Area -->
     <main class="content-area">
+      <!-- Floating button to reveal sidebar when hidden -->
+      <button id="show-sidebar-btn" onclick="toggleSidebar()" class="floating-toggle hidden" title="Show Navigation">☰ Menu</button>
+
       <!-- Status Message Banner -->
       <div id="status-message" class="message hidden"></div>
 
@@ -64,11 +68,11 @@
         </div>
       </section>
 
-      <!-- PAGE 2: REGISTER PAGE -->
+      <!-- PAGE 2: REGISTER & BROWSE PAGE -->
       <section id="page-register" class="page-view hidden">
         <div class="page-header">
-          <h1>Register for an Event</h1>
-          <p>Select an event below to register your attendance.</p>
+          <h1>Campus Events</h1>
+          <p>Select an event below to register your attendance or manage your event.</p>
         </div>
         <div id="register-events-list" class="events-grid">
           <p>Loading events...</p>
@@ -109,6 +113,11 @@
             <div class="form-group">
               <label for="organiser_name">Organiser Name*</label>
               <input type="text" id="organiser_name" required placeholder="e.g., Computer Science Club">
+            </div>
+
+            <div class="form-group">
+              <label for="passcode">Creator Passcode* (Used to edit/delete this event later)</label>
+              <input type="password" id="passcode" required placeholder="Set a 4-digit PIN or password">
             </div>
 
             <div class="form-group">
