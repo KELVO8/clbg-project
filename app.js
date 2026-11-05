@@ -1,6 +1,6 @@
 // 1. Initialize Supabase Client
 const SUPABASE_URL = 'https://dwqifavfgggrdzimvrfx.supabase.co'; 
-const SUPABASE_KEY = 'sb_publishable_8BoKa-IB_kQPtt2rhi2X4w_or0ImSFV'; 
+const SUPABASE_KEY = 'sb_publishable_8BoKa-IB_kQPtt2rhi2X4w_or0ImSFV'; // Keep your actual anon public key here
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // DOM Elements
@@ -22,11 +22,14 @@ if (dateInput) {
   dateInput.min = new Date().toISOString().split('T')[0];
 }
 
-// 2. TOGGLE SIDEBAR VISIBILITY
+// Global Memory Arrays for Client-Side Filtering
+let allEvents = [];
+let allRegistrations = [];
+
+// TOGGLE SIDEBAR VISIBILITY
 window.toggleSidebar = () => {
   const sidebar = document.getElementById('sidebar');
   const showBtn = document.getElementById('show-sidebar-btn');
-  
   sidebar.classList.toggle('collapsed');
   showBtn.classList.toggle('hidden');
 };
@@ -49,7 +52,7 @@ function showMessage(msg, isError = false) {
   setTimeout(() => statusMessage.classList.add('hidden'), 4000);
 }
 
-// 3. READ EVENTS & RENDER CARDS
+// READ: Fetch Events & Store in Memory
 async function fetchEvents() {
   const { data: events, error: eventError } = await supabaseClient
     .from('events')
@@ -65,23 +68,57 @@ async function fetchEvents() {
     .from('registrations')
     .select('event_id, attendee_name');
 
-  document.getElementById('stat-total-events').textContent = events ? events.length : 0;
-  document.getElementById('stat-total-regs').textContent = registrations ? registrations.length : 0;
+  allEvents = events || [];
+  allRegistrations = registrations || [];
 
-  if (!events || events.length === 0) {
-    registerEventsList.innerHTML = '<div class="card"><p>No events available right now. Click "Create Event" in the sidebar to add one!</p></div>';
+  document.getElementById('stat-total-events').textContent = allEvents.length;
+  document.getElementById('stat-total-regs').textContent = allRegistrations.length;
+
+  filterEvents();
+}
+
+// REAL-TIME FILTER FUNCTION
+window.filterEvents = () => {
+  const searchInput = document.getElementById('search-input');
+  const filterStatus = document.getElementById('filter-status');
+
+  const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+  const statusFilter = filterStatus ? filterStatus.value : 'all';
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const filtered = allEvents.filter(event => {
+    const matchesSearch = 
+      event.title.toLowerCase().includes(searchTerm) ||
+      event.venue.toLowerCase().includes(searchTerm) ||
+      event.organiser_name.toLowerCase().includes(searchTerm);
+
+    let matchesStatus = true;
+    if (statusFilter === 'upcoming') matchesStatus = event.event_date >= todayStr;
+    else if (statusFilter === 'past') matchesStatus = event.event_date < todayStr;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  renderEventsList(filtered);
+};
+
+// RENDER FILTERED EVENTS TO DOM
+function renderEventsList(eventsToRender) {
+  if (!eventsToRender || eventsToRender.length === 0) {
+    registerEventsList.innerHTML = `
+      <div class="card" style="grid-column: 1 / -1;">
+        <p>🔍 No matching events found.</p>
+      </div>`;
     return;
   }
 
   const regMap = {};
-  if (registrations) {
-    registrations.forEach(r => {
-      if (!regMap[r.event_id]) regMap[r.event_id] = [];
-      regMap[r.event_id].push(r.attendee_name);
-    });
-  }
+  allRegistrations.forEach(r => {
+    if (!regMap[r.event_id]) regMap[r.event_id] = [];
+    regMap[r.event_id].push(r.attendee_name);
+  });
 
-  registerEventsList.innerHTML = events.map(event => {
+  registerEventsList.innerHTML = eventsToRender.map(event => {
     const attendeeList = regMap[event.id] || [];
     const count = attendeeList.length;
 
@@ -129,7 +166,7 @@ async function fetchEvents() {
           <button onclick="verifyPasscode(${event.id}, '${event.passcode.replace(/'/g, "\\'")}')" class="btn warning" style="width:100%;">Unlock Controls</button>
         </div>
 
-        <!-- Unlocked Organizer Controls (Hidden until correct passcode) -->
+        <!-- Unlocked Organizer Controls -->
         <div id="manage-controls-box-${event.id}" class="manage-box hidden" style="background-color: #f8fafc; border-color: #2563eb;">
           <h4 style="color:#2563eb;">🔓 Organizer Controls Unlocked</h4>
           <div class="manage-actions">
@@ -148,7 +185,7 @@ async function fetchEvents() {
   }).join('');
 }
 
-// 4. PASSCODE VERIFICATION LOGIC
+// PASSCODE VERIFICATION LOGIC
 window.toggleManageAuth = (eventId) => {
   const authBox = document.getElementById(`manage-auth-box-${eventId}`);
   const regBox = document.getElementById(`register-box-${eventId}`);
@@ -172,7 +209,7 @@ window.toggleAttendeesList = (eventId) => {
   list.classList.toggle('hidden');
 };
 
-// 5. CREATE / UPDATE EVENT WITH PASSCODE
+// CREATE / UPDATE EVENT
 eventForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 

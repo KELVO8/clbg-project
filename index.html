@@ -69,11 +69,31 @@
       </section>
 
       <!-- PAGE 2: REGISTER & BROWSE PAGE -->
+<!-- PAGE 2: REGISTER & BROWSE PAGE -->
       <section id="page-register" class="page-view hidden">
         <div class="page-header">
           <h1>Campus Events</h1>
           <p>Select an event below to register your attendance or manage your event.</p>
         </div>
+
+        <!-- SEARCH AND FILTER CONTROLS -->
+        <div class="search-container card">
+          <div class="form-row" style="margin-bottom:0;">
+            <div class="form-group" style="flex: 2;">
+              <label for="search-input">🔍 Search Events</label>
+              <input type="text" id="search-input" oninput="filterEvents()" placeholder="Search by event title, venue, or organiser...">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="filter-status">Filter by Status</label>
+              <select id="filter-status" onchange="filterEvents()">
+                <option value="all">All Events</option>
+                <option value="upcoming">Upcoming Events</option>
+                <option value="past">Past Events</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div id="register-events-list" class="events-grid">
           <p>Loading events...</p>
         </div>
