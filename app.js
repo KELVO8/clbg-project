@@ -1,6 +1,6 @@
 // 1. Initialize Supabase Client
 const SUPABASE_URL = 'https://dwqifavfgggrdzimvrfx.supabase.co'; 
-const SUPABASE_KEY = 'sb_publishable_8BoKa-IB_kQPtt2rhi2X4w_or0ImSFV'; // Keep your actual anon public key here
+const SUPABASE_KEY = 'sb_publishable_8BoKa-IB_kQPtt2rhi2X4w_or0ImSFV'; 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // DOM Elements
@@ -163,7 +163,7 @@ function renderEventsList(eventsToRender) {
           <div class="form-group" style="margin-top:0.5rem;">
             <input type="password" id="auth-input-${event.id}" placeholder="Enter passcode">
           </div>
-          <button onclick="verifyPasscode(${event.id}, '${event.passcode.replace(/'/g, "\\'")}')" class="btn warning" style="width:100%;">Unlock Controls</button>
+          <button onclick="verifyPasscode(${event.id}, '${(event.passcode || '').replace(/'/g, "\\'")}')" class="btn warning" style="width:100%;">Unlock Controls</button>
         </div>
 
         <!-- Unlocked Organizer Controls -->
@@ -172,7 +172,7 @@ function renderEventsList(eventsToRender) {
           <div class="manage-actions">
             <button onclick="toggleAttendeesList(${event.id})" class="btn secondary">View Attendees (${count})</button>
             <button onclick="editEvent(${event.id}, '${event.title.replace(/'/g, "\\'")}', '${event.venue.replace(/'/g, "\\'")}', '${event.event_date}', '${event.event_time}', '${event.organiser_name.replace(/'/g, "\\'")}', '${(event.description || '').replace(/'/g, "\\'")}')" class="btn warning">Edit Event</button>
-            <button onclick="deleteEvent(${event.id}, '${event.passcode.replace(/'/g, "\\'")}')" class="btn danger">Delete</button>
+            <button onclick="deleteEvent(${event.id})" class="btn danger">Delete</button>
           </div>
           <div id="attendees-box-${event.id}" class="hidden" style="margin-top:0.8rem;">
             <hr style="margin-bottom:0.5rem; border:0; border-top:1px solid #cbd5e1;">
@@ -185,7 +185,7 @@ function renderEventsList(eventsToRender) {
   }).join('');
 }
 
-// PASSCODE VERIFICATION LOGIC
+// PASSCODE TOGGLE & VERIFICATION LOGIC
 window.toggleManageAuth = (eventId) => {
   const authBox = document.getElementById(`manage-auth-box-${eventId}`);
   const regBox = document.getElementById(`register-box-${eventId}`);
@@ -194,13 +194,19 @@ window.toggleManageAuth = (eventId) => {
 };
 
 window.verifyPasscode = (eventId, correctPasscode) => {
-  const inputVal = document.getElementById(`auth-input-${eventId}`).value;
+  const inputEl = document.getElementById(`auth-input-${eventId}`);
+  const inputVal = inputEl ? inputEl.value.trim() : '';
+
   if (inputVal === correctPasscode) {
     document.getElementById(`manage-auth-box-${eventId}`).classList.add('hidden');
     document.getElementById(`manage-controls-box-${eventId}`).classList.remove('hidden');
-    showMessage('Passcode verified! Management controls unlocked.');
+    showMessage('🔓 Passcode verified! Management controls unlocked.');
   } else {
-    showMessage('Incorrect passcode! Access denied.', true);
+    showMessage('❌ Incorrect passcode! Access denied.', true);
+    if (inputEl) {
+      inputEl.value = '';
+      inputEl.focus();
+    }
   }
 };
 
@@ -238,7 +244,7 @@ eventForm.addEventListener('submit', async (e) => {
   switchPage('register');
 });
 
-// SUBMIT REGISTRATION
+// REGISTRATION FORM TOGGLE
 window.toggleRegisterForm = (eventId) => {
   const regBox = document.getElementById(`register-box-${eventId}`);
   const authBox = document.getElementById(`manage-auth-box-${eventId}`);
@@ -246,12 +252,27 @@ window.toggleRegisterForm = (eventId) => {
   regBox.classList.toggle('hidden');
 };
 
+// SUBMIT REGISTRATION
 window.submitRegistration = async (e, eventId) => {
-  e.preventDefault();
+  if (e) e.preventDefault();
 
-  const isStudent = document.getElementById(`reg-status-${eventId}`).value;
-  const attendeeName = document.getElementById(`reg-name-${eventId}`).value.trim();
-  const attendeeEmail = document.getElementById(`reg-email-${eventId}`).value.trim().toLowerCase();
+  const isStudentEl = document.getElementById(`reg-status-${eventId}`);
+  const attendeeNameEl = document.getElementById(`reg-name-${eventId}`);
+  const attendeeEmailEl = document.getElementById(`reg-email-${eventId}`);
+
+  if (!attendeeNameEl || !attendeeEmailEl) {
+    showMessage('Error finding registration inputs.', true);
+    return;
+  }
+
+  const isStudent = isStudentEl ? isStudentEl.value : 'Yes';
+  const attendeeName = attendeeNameEl.value.trim();
+  const attendeeEmail = attendeeEmailEl.value.trim().toLowerCase();
+
+  if (!attendeeName || !attendeeEmail) {
+    showMessage('Please fill in both your name and email.', true);
+    return;
+  }
 
   const displayName = isStudent === 'Yes' ? `${attendeeName} (Student)` : attendeeName;
 
@@ -266,13 +287,28 @@ window.submitRegistration = async (e, eventId) => {
   if (error) {
     showMessage('Registration failed: ' + error.message, true);
   } else {
-    showMessage('🎉 Registration confirmed!');
-    document.getElementById(`register-box-${eventId}`).classList.add('hidden');
-    fetchEvents();
+    showMessage(`🎉 Success! ${attendeeName}, your registration is confirmed.`);
+    
+    const regBox = document.getElementById(`register-box-${eventId}`);
+    if (regBox) regBox.classList.add('hidden');
+
+    attendeeNameEl.value = '';
+    attendeeEmailEl.value = '';
+
+    const { data: events } = await supabaseClient.from('events').select('*').order('event_date', { ascending: true });
+    const { data: registrations } = await supabaseClient.from('registrations').select('event_id, attendee_name');
+    
+    allEvents = events || [];
+    allRegistrations = registrations || [];
+    
+    document.getElementById('stat-total-events').textContent = allEvents.length;
+    document.getElementById('stat-total-regs').textContent = allRegistrations.length;
+
+    filterEvents();
   }
 };
 
-// EDIT & DELETE
+// EDIT & DELETE FUNCTIONS
 window.editEvent = (id, title, venue, date, time, organiser, description) => {
   eventIdInput.value = id;
   titleInput.value = title;
@@ -296,7 +332,7 @@ function resetForm() {
   cancelBtn.style.display = 'none';
 }
 
-window.deleteEvent = async (id, passcode) => {
+window.deleteEvent = async (id) => {
   if (!confirm('Are you sure you want to delete this event? Linked registrations will be cleared.')) return;
 
   const { error } = await supabaseClient.from('events').delete().eq('id', id);
